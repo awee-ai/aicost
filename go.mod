@@ -1,4 +1,4 @@
-module github.com/contentforward/llm-pricing
+module github.com/awee-ai/aicost
 
 go 1.20
 
