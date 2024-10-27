@@ -1,4 +1,4 @@
-package llm_pricing
+package aicost
 
 // ISO 4217 currency codes
 

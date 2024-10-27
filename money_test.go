@@ -1,4 +1,4 @@
-package llm_pricing
+package aicost
 
 import "testing"
 

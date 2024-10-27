@@ -1,4 +1,4 @@
-package llm_pricing
+package aicost
 
 // OpenAI is a list of OpenAI models with price
 // last updated: 2024-06-23
