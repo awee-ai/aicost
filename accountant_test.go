@@ -124,7 +124,7 @@ func Test_USD_Model_Pricing_ForModelQuery(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			actual, actualConverted, err := price.PriceForModelQuery(testProvider, tt.model, tt.currency, tt.tokens)
+			actual, actualConverted, err := price.PriceForModelInput(testProvider, tt.model, tt.currency, tt.tokens)
 			assert.NoError(t, err)
 
 			assert.Equal(t, NewMoneyFromFloat(CurrencyUSD, tt.expected), *actual)

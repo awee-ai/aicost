@@ -2,9 +2,10 @@ package llm_pricing
 
 import (
 	"fmt"
-	"github.com/pkoukk/tiktoken-go"
 	"log"
 	"strings"
+
+	"github.com/pkoukk/tiktoken-go"
 
 	tiktokenloader "github.com/pkoukk/tiktoken-go-loader"
 )
