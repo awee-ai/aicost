@@ -34,7 +34,7 @@ func (m *Money) Add(n *Money) (*Money, error) {
 	return money, nil
 }
 
-// NewMoneyFromFloat converts a float64 price to a Money struct.
+// NewMoneyFromFloat converts a float64 cost to a Money struct.
 // It makes the creation of Money instances more human-readable.
 func NewMoneyFromFloat(currencyCode string, amount float64) Money {
 	units := int64(amount)                                      // Extract whole units

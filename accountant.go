@@ -10,7 +10,7 @@ import (
 	tiktokenloader "github.com/pkoukk/tiktoken-go-loader"
 )
 
-// Model represents a model with its price
+// Model represents a model with its cost
 type Model struct {
 	Provider string `json:"provider"`
 	Model    string `json:"model"`
@@ -18,19 +18,17 @@ type Model struct {
 	// empty list means exact model match
 	// * means any release in consecutive release order
 	Releases []string `json:"releases"`
-	// PriceQuery is the price per token for a query message
-	// per 1000 tokens
-	PriceQuery Money `json:"price_query"`
-	// PriceOutput is the price per token for an output message
-	// per 1000 tokens
-	PriceOutput Money `json:"price_output"`
+	// CostInput is the cost (usually) per 1k tokens for a query message
+	CostInput Money `json:"cost_input"`
+	// CostOutput is the cost (usually) per tokens for an output message
+	CostOutput Money `json:"cost_output"`
 }
 
-// Accountant is an interface for model price calculation
+// Accountant is an interface for model cost calculation
 type Accountant interface {
 	TokenCount(provider, model string, content string) (int64, error)
-	PriceForModelInput(provider, model string, userCurrency string, tokens int64) (*Money, *Money, error)
-	PriceForModelOutput(provider, model string, userCurrency string, tokens int64) (*Money, *Money, error)
+	CostForModelInput(provider, model string, userCurrency string, tokens int64) (*Money, *Money, error)
+	CostForModelOutput(provider, model string, userCurrency string, tokens int64) (*Money, *Money, error)
 	Models() []Model
 }
 
@@ -83,34 +81,34 @@ func (p *Counter) TokenCount(provider, model string, content string) (int64, err
 	return int64(tokens), nil
 }
 
-// PriceForModelQuery returns the price for a model query
-func (p *Counter) PriceForModelInput(provider, model string, userCurrency string, tokens int64) (*Money, *Money, error) {
+// CostForModelInput returns the cost for a model query
+func (p *Counter) CostForModelInput(provider, model string, userCurrency string, tokens int64) (*Money, *Money, error) {
 	pricingModel := p.findModel(provider, model)
 	if pricingModel == nil {
-		return nil, nil, fmt.Errorf("failed to find model for query price %s: %w", model, ErrPricingModelNotFound)
+		return nil, nil, fmt.Errorf("failed to find model for input cost %s: %w", model, ErrPricingModelNotFound)
 	}
 
-	price, convertedPrice, err := p.calculateCost(tokens, pricingModel.PriceQuery, userCurrency)
+	cost, convertedCost, err := p.calculateCost(tokens, pricingModel.CostInput, userCurrency)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return price, convertedPrice, nil
+	return cost, convertedCost, nil
 }
 
-// PriceForModelOutput returns the price for a model output
-func (p *Counter) PriceForModelOutput(provider, model string, userCurrency string, tokens int64) (*Money, *Money, error) {
+// CostForModelOutput returns the cost for a model output
+func (p *Counter) CostForModelOutput(provider, model string, userCurrency string, tokens int64) (*Money, *Money, error) {
 	pricingModel := p.findModel(provider, model)
 	if pricingModel == nil {
-		return nil, nil, fmt.Errorf("failed to find model for output price %s: %w", model, ErrPricingModelNotFound)
+		return nil, nil, fmt.Errorf("failed to find model for output cost %s: %w", model, ErrPricingModelNotFound)
 	}
 
-	price, convertedPrice, err := p.calculateCost(tokens, pricingModel.PriceOutput, userCurrency)
+	cost, convertedCost, err := p.calculateCost(tokens, pricingModel.CostOutput, userCurrency)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return price, convertedPrice, nil
+	return cost, convertedCost, nil
 }
 
 func (p *Counter) findModel(provider, model string) *Model {
@@ -171,17 +169,17 @@ func (p *Counter) matchModelRelease(givenModel string, model Model) bool {
 	return false
 }
 
-func (p *Counter) calculateCost(tokens int64, pricePerToken Money, userCurrency string) (*Money, *Money, error) {
-	// calculate price and take into consideration that we need to convert the price per thousand
-	price := float64(tokens) * MoneyToFloat64(pricePerToken)
+func (p *Counter) calculateCost(tokens int64, costPerToken Money, userCurrency string) (*Money, *Money, error) {
+	// calculate cost and take into consideration that we need to convert the cost per thousand
+	cost := float64(tokens) * MoneyToFloat64(costPerToken)
 
-	// price := float32(tokens) * pricePerThousand
-	converted, err := p.converter.Convert(CurrencyAmount(price), pricePerToken.CurrencyCode, userCurrency)
+	// cost := float32(tokens) * costPerThousand
+	converted, err := p.converter.Convert(CurrencyAmount(cost), costPerToken.CurrencyCode, userCurrency)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to convert price from %s to %s: %w", pricePerToken.CurrencyCode, userCurrency, err)
+		return nil, nil, fmt.Errorf("failed to convert cost from %s to %s: %w", costPerToken.CurrencyCode, userCurrency, err)
 	}
 
-	originalCost := NewMoneyFromFloat(pricePerToken.CurrencyCode, price)
+	originalCost := NewMoneyFromFloat(costPerToken.CurrencyCode, cost)
 	convertedCost := NewMoneyFromFloat(userCurrency, float64(converted))
 
 	return &originalCost, &convertedCost, nil

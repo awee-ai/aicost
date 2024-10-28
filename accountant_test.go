@@ -25,22 +25,22 @@ var testModelsUSD = []Model{
 		Provider: testProvider,
 		Model:    "model-1",
 
-		PriceQuery:  NewMoneyFromFloat(CurrencyUSD, 0.05/1000),
-		PriceOutput: NewMoneyFromFloat(CurrencyUSD, 0.1/1000),
+		CostInput:  NewMoneyFromFloat(CurrencyUSD, 0.05/1000),
+		CostOutput: NewMoneyFromFloat(CurrencyUSD, 0.1/1000),
 	},
 	{
 		Provider: testProvider,
 		Model:    "model-2",
 
-		PriceQuery:  NewMoneyFromFloat(CurrencyUSD, 0.1/1000),
-		PriceOutput: NewMoneyFromFloat(CurrencyUSD, 0.2/1000),
+		CostInput:  NewMoneyFromFloat(CurrencyUSD, 0.1/1000),
+		CostOutput: NewMoneyFromFloat(CurrencyUSD, 0.2/1000),
 	},
 	{
 		Provider: testProvider,
 		Model:    "gpt-4",
 
-		PriceQuery:  NewMoneyFromFloat(CurrencyUSD, 0.03/1000),
-		PriceOutput: NewMoneyFromFloat(CurrencyUSD, 0.06/1000),
+		CostInput:  NewMoneyFromFloat(CurrencyUSD, 0.03/1000),
+		CostOutput: NewMoneyFromFloat(CurrencyUSD, 0.06/1000),
 	},
 }
 
@@ -53,7 +53,7 @@ var converter = &Converter{
 }
 
 func Test_USD_Model_Pricing_ForModelQuery(t *testing.T) {
-	price := NewAccountant(testModelsUSD, converter, false)
+	cost := NewAccountant(testModelsUSD, converter, false)
 
 	tests := []test{
 		{
@@ -124,30 +124,30 @@ func Test_USD_Model_Pricing_ForModelQuery(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			actual, actualConverted, err := price.PriceForModelInput(testProvider, tt.model, tt.currency, tt.tokens)
+			actual, actualConverted, err := cost.CostForModelInput(testProvider, tt.model, tt.currency, tt.tokens)
 			assert.NoError(t, err)
 
 			assert.Equal(t, NewMoneyFromFloat(CurrencyUSD, tt.expected), *actual)
 			assert.NotNil(t, actualConverted)
-			assert.Equal(t, tt.expectedOutput, FormatPrice(*actual))
+			assert.Equal(t, tt.expectedOutput, FormatCost(*actual))
 		})
 	}
 }
 
-// FormatPrice formats a price with currency
-func FormatPrice(price Money) string {
-	switch price.CurrencyCode {
+// FormatCost formats a cost with currency
+func FormatCost(cost Money) string {
+	switch cost.CurrencyCode {
 	case CurrencyUSD:
-		return fmt.Sprintf("$%.4f", MoneyToFloat64(price))
+		return fmt.Sprintf("$%.4f", MoneyToFloat64(cost))
 	case CurrencyEUR:
-		return fmt.Sprintf("€%.4f", MoneyToFloat64(price))
+		return fmt.Sprintf("€%.4f", MoneyToFloat64(cost))
 	default:
-		return fmt.Sprintf("%s", MoneyToString(price))
+		return fmt.Sprintf("%s", MoneyToString(cost))
 	}
 }
 
 func Test_USD_Model_Pricing_ForModelOutput(t *testing.T) {
-	price := NewAccountant(testModelsUSD, converter, false)
+	cost := NewAccountant(testModelsUSD, converter, false)
 
 	tests := []test{
 		{
@@ -211,13 +211,13 @@ func Test_USD_Model_Pricing_ForModelOutput(t *testing.T) {
 	for _, tt := range tests {
 		name := fmt.Sprintf("%s_%s_%s_%d", testProvider, tt.model, tt.currency, tt.tokens)
 		t.Run(name, func(t *testing.T) {
-			actualUSD, actualConverted, err := price.PriceForModelOutput(testProvider, tt.model, tt.currency, tt.tokens)
+			actualUSD, actualConverted, err := cost.CostForModelOutput(testProvider, tt.model, tt.currency, tt.tokens)
 			assert.NoError(t, err)
 
 			expectedUSD := NewMoneyFromFloat(CurrencyUSD, tt.expected)
 			assert.Equal(t, expectedUSD, actualUSD)
 			assert.NotNil(t, actualConverted)
-			assert.Equal(t, tt.expectedOutput, FormatPrice(*actualUSD))
+			assert.Equal(t, tt.expectedOutput, FormatCost(*actualUSD))
 		})
 	}
 }
