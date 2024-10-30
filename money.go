@@ -5,10 +5,11 @@ import (
 	"math"
 )
 
+// Money represents a monetary value
 type Money struct {
-	Units        int64
-	Nanos        int32
-	CurrencyCode string
+	Units        int64  `json:"units" yaml:"units"`
+	Nanos        int32  `json:"nanos" yaml:"nanos"`
+	CurrencyCode string `json:"currency_code" yaml:"currency_code"`
 }
 
 // NewMoney creates a new money object
@@ -20,6 +21,7 @@ func NewMoney(currency string, units int64, nanos int32) *Money {
 	}
 }
 
+// Add adds two Money objects together
 func (m *Money) Add(n *Money) (*Money, error) {
 	if m.CurrencyCode != n.CurrencyCode {
 		return nil, fmt.Errorf("currency codes do not match: %s != %s", m.CurrencyCode, n.CurrencyCode)
@@ -56,6 +58,7 @@ func MoneyToFloat64(m Money) float64 {
 	return float64(m.Units) + float64(m.Nanos)/1e9
 }
 
+// MoneyToInt64 converts Money to an int64 representation.
 func MoneyToInt64(m Money) int64 {
 	return m.Units + int64(m.Nanos)
 }

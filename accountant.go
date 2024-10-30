@@ -12,16 +12,16 @@ import (
 
 // Model represents a model with its cost
 type Model struct {
-	Provider string `json:"provider"`
-	Model    string `json:"model"`
+	Provider string `json:"provider" yaml:"provider"`
+	Model    string `json:"model" yaml:"model"`
 	// Releases is a list of releases for the model
 	// empty list means exact model match
 	// * means any release in consecutive release order
-	Releases []string `json:"releases"`
+	Releases []string `json:"releases" yaml:"releases"`
 	// CostInput is the cost (usually) per 1k tokens for a query message
-	CostInput Money `json:"cost_input"`
+	CostInput Money `json:"cost_input" yaml:"cost_input"`
 	// CostOutput is the cost (usually) per tokens for an output message
-	CostOutput Money `json:"cost_output"`
+	CostOutput Money `json:"cost_output" yaml:"cost_output"`
 }
 
 // Accountant is an interface for model cost calculation

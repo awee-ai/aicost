@@ -78,7 +78,7 @@ func Test_USD_Model_Pricing_ForModelQuery(t *testing.T) {
 			tokens:         10_000,
 			currency:       CurrencyEUR,
 			expected:       0.5,
-			expectedOutput: "€0.5000",
+			expectedOutput: "$0.5000",
 		},
 		{
 			name:           "model-2",
@@ -102,7 +102,7 @@ func Test_USD_Model_Pricing_ForModelQuery(t *testing.T) {
 			tokens:         1,
 			currency:       CurrencyEUR,
 			expected:       0.00002744771,
-			expectedOutput: "€0.0000",
+			expectedOutput: "$0.0000",
 		},
 		{
 			name:           "gpt-4",
@@ -118,7 +118,7 @@ func Test_USD_Model_Pricing_ForModelQuery(t *testing.T) {
 			tokens:         20,
 			currency:       CurrencyEUR,
 			expected:       0.0005489542,
-			expectedOutput: "€0.0005",
+			expectedOutput: "$0.0005",
 		},
 	}
 
