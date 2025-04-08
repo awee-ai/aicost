@@ -2,7 +2,6 @@ package aicost
 
 import (
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/pkoukk/tiktoken-go"
@@ -14,10 +13,7 @@ import (
 type Model struct {
 	Provider string `json:"provider" yaml:"provider"`
 	Model    string `json:"model" yaml:"model"`
-	// Releases is a list of releases for the model
-	// empty list means exact model match
-	// * means any release in consecutive release order
-	Releases []string `json:"releases" yaml:"releases"`
+	Version  string `json:"version" yaml:"version"`
 	// CostInput is the cost (usually) per 1k tokens for a query message
 	CostInput Money `json:"cost_input" yaml:"cost_input"`
 	// CostOutput is the cost (usually) per tokens for an output message
@@ -29,7 +25,7 @@ type Accountant interface {
 	TokenCount(provider, model string, content string) (int64, error)
 	CostForModelInput(provider, model string, userCurrency string, tokens int64) (*Money, *Money, error)
 	CostForModelOutput(provider, model string, userCurrency string, tokens int64) (*Money, *Money, error)
-	Models() []Model
+	Models(models []Model) []Model
 }
 
 var ErrPricingModelNotFound = fmt.Errorf("model not supported")
@@ -38,20 +34,17 @@ var ErrTokenizerNotFound = fmt.Errorf("tokenizer not found")
 // Counter is a pricing calculator
 type Counter struct {
 	models    []Model
-	converter CurrencyConversion
+	converter Converter
 }
 
 var _ Accountant = (*Counter)(nil)
 
 // NewAccountant returns a new pricing
-func NewAccountant(models []Model, converter CurrencyConversion, bpe bool) *Counter {
-	// TODO: we may need a way to reset this
+func NewAccountant(models []Model, converter Converter, bpe bool) *Counter {
 	if bpe {
-		log.Printf("setting offline bpe loader")
 		loader := tiktokenloader.NewOfflineLoader()
 		tiktoken.SetBpeLoader(loader)
 	} else {
-		log.Printf("setting nil bpe loader")
 		tiktoken.SetBpeLoader(nil)
 	}
 
@@ -61,8 +54,14 @@ func NewAccountant(models []Model, converter CurrencyConversion, bpe bool) *Coun
 	}
 }
 
-// Models returns the list of models
-func (p *Counter) Models() []Model {
+// Models returns or sets the models
+func (p *Counter) Models(models []Model) []Model {
+	if models != nil {
+		p.models = models
+
+		return p.models
+	}
+
 	return p.models
 }
 
@@ -114,73 +113,27 @@ func (p *Counter) CostForModelOutput(provider, model string, userCurrency string
 func (p *Counter) findModel(provider, model string) *Model {
 	var mod *Model
 	for _, m := range p.models {
-		// "" allows us to skip the provider check
-		if provider != "" && m.Provider != provider {
+		if m.Provider != provider {
 			continue
 		}
-
-		cnt := len(m.Releases)
-		// no releases means exact model match
-		if cnt == 0 {
-			if m.Model == model {
-				mod = &m
-				break
-			}
-			continue
-		}
-
-		if p.matchModelRelease(model, m) {
-			// log.Printf("matched model by release")
+		if m.Model == model {
 			mod = &m
 			break
 		}
 	}
-
-	if mod == nil {
-		return nil
-	}
-
 	return mod
 }
 
-func (p *Counter) matchModelRelease(givenModel string, model Model) bool {
-	// make sure the given model starts with the base model
-	// "gpt-4-0125-preview", "gpt-4"
-	// log.Printf("givenModel: %s, model.Model: %s", givenModel, model.Model)
-	if !strings.HasPrefix(givenModel, model.Model) {
-		// log.Printf("model does not start with base model")
-		return false
-	}
-	// log.Printf("model found: %s", model.Model)
-	// log.Printf("model releases: %v", model.Releases)
-
-	// * means any release in consecutive release order
-	// e.g. gpt-4-0125-preview, gpt-4-0125, gpt-4-1106-preview
-	// gpt-4 is the base model
-	for _, release := range model.Releases {
-		if release == "*" {
-			return true
-		}
-		if model.Model+"-"+release == givenModel {
-			return true
-		}
-	}
-
-	return false
-}
-
 func (p *Counter) calculateCost(tokens int64, costPerToken Money, userCurrency string) (*Money, *Money, error) {
-	// calculate cost and take into consideration that we need to convert the cost per thousand
-	cost := float64(tokens) * MoneyToFloat64(costPerToken)
+	cost, err := costPerToken.Times(tokens)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to multiply tokens %d: %w", tokens, err)
+	}
 
-	// cost := float32(tokens) * costPerThousand
-	converted, err := p.converter.Convert(CurrencyAmount(cost), costPerToken.CurrencyCode, userCurrency)
+	converted, err := p.converter.Convert(*cost, userCurrency)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to convert cost from %s to %s: %w", costPerToken.CurrencyCode, userCurrency, err)
 	}
 
-	originalCost := NewMoneyFromFloat(costPerToken.CurrencyCode, cost)
-	convertedCost := NewMoneyFromFloat(userCurrency, float64(converted))
-
-	return &originalCost, &convertedCost, nil
+	return cost, converted, nil
 }

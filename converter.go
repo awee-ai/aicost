@@ -1,65 +1,107 @@
 package aicost
 
-import "fmt"
+import (
+	"fmt"
+)
 
-// CurrencyAmount represents the amount of currency as a float32 to maintain precision.
-type CurrencyAmount float64
-
-// CurrencyConversion defines the methods that any type of currency converter must implement.
-type CurrencyConversion interface {
-	Convert(amount CurrencyAmount, fromCurrency, toCurrency string) (CurrencyAmount, error)
+// Converter defines the methods that any type of currency converter must implement.
+type Converter interface {
+	Convert(amount Money, toCurrency string) (*Money, error)
+	Rates(rates map[string]float64) error
 }
 
-// Converter holds the conversion rates and scale factors for different currencies.
-type Converter struct {
+// converter holds the conversion rates and scale factors for different currencies.
+type converter struct {
 	baseCurrency string
-	rates        map[string]CurrencyAmount // rates are scaled up to preserve precision
+	rates        map[string]float64
 }
 
-// NewConverter initializes a new Converter struct with default rates.
-// In a real-world application, you might fetch these rates from a financial API service.
-func NewConverter(baseCurrency string, rates map[string]CurrencyAmount) *Converter {
-	return &Converter{
+var _ Converter = (*converter)(nil)
+
+// NewConverter initializes a new converter struct with default rates.
+func NewConverter(baseCurrency string, rates map[string]float64) *converter {
+	return &converter{
 		baseCurrency: baseCurrency,
 		rates:        rates,
 	}
 }
 
-// Convert takes an amount in a source currency and converts it to the target currency.
-// It returns the converted amount in the target currency.
-func (c *Converter) Convert(amount CurrencyAmount, fromCurrency, toCurrency string) (CurrencyAmount, error) {
-	// If the source and target currencies are the same, return the amount as is.
-	if fromCurrency == toCurrency {
-		return amount, nil
+// Rates sets the conversion rates for the converter.
+func (c *converter) Rates(rates map[string]float64) error {
+	if len(rates) == 0 {
+		return fmt.Errorf("conversion rates cannot be empty")
 	}
 
-	// Convert the amount to the base currency first.
-	baseAmount, err := c.convertToBase(amount, fromCurrency)
-	if err != nil {
-		return 0, err
+	for cur, rate := range rates {
+		if rate <= 0 {
+			return fmt.Errorf("conversion rate %s must be greater than 0: %f", cur, rate)
+		}
 	}
 
-	// Now convert from the base currency to the target currency.
+	c.rates = rates
+
+	return nil
+}
+
+// Convert takes an amount in a source currency and converts it to the target currency
+// it returns the converted amount in the target currency
+func (c *converter) Convert(providedMoney Money, toCurrency string) (*Money, error) {
+	// if the source and target currencies are the same, return the amount as is
+	if providedMoney.CurrencyCode == toCurrency {
+		return &providedMoney, nil
+	}
+
+	var baseAmount = &providedMoney
+
+	// if the base currency is not the same as the source currency
+	// convert the amount to the base currency first
+	if providedMoney.CurrencyCode != c.baseCurrency {
+		var err error
+		baseAmount, err = c.convertToBase(providedMoney)
+		if err != nil {
+			return nil, fmt.Errorf("error converting to base currency: %w", err)
+		}
+	}
+
+	if baseAmount.CurrencyCode == toCurrency {
+		return baseAmount, nil
+	}
+
+	// convert from the base currency to the target currency
+	// if the target currency is the base currency, flip the rate.
 	targetRate, ok := c.rates[toCurrency]
 	if !ok {
-		return 0, fmt.Errorf("conversion rate for target currency %s not found", toCurrency)
+		return nil, fmt.Errorf("conversion rate for currency %s not found", toCurrency)
 	}
 
-	convertedAmount := baseAmount * targetRate
-	return convertedAmount, nil
+	converted, err := baseAmount.TimesFloat(targetRate)
+	if err != nil {
+		return nil, fmt.Errorf("error converting to target currency: %w", err)
+	}
+	converted.CurrencyCode = toCurrency
+
+	return converted, nil
 }
 
 // convertToBase is a helper function that converts an amount to the base currency.
-func (c *Converter) convertToBase(amount CurrencyAmount, currency string) (CurrencyAmount, error) {
-	if currency == c.baseCurrency {
-		return amount, nil
+func (c *converter) convertToBase(amount Money) (*Money, error) {
+	if amount.CurrencyCode == c.baseCurrency {
+		return &amount, nil
 	}
 
-	rate, ok := c.rates[currency]
+	rate, ok := c.rates[amount.CurrencyCode]
 	if !ok {
-		return 0, fmt.Errorf("conversion rate for currency %s not found", currency)
+		return nil, fmt.Errorf("conversion rate for currency %s not found", amount.CurrencyCode)
 	}
+	// invert the rate
+	rate = 1 + (1 - rate)
 
 	// To convert to the base currency, divide by the currency rate.
-	return amount / rate, nil
+	float, err := amount.TimesFloat(rate)
+	if err != nil {
+		return nil, fmt.Errorf("error converting to base currency: %w", err)
+	}
+	float.CurrencyCode = c.baseCurrency
+
+	return float, nil
 }
