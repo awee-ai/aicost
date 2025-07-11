@@ -4,9 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pkoukk/tiktoken-go"
-
-	tiktokenloader "github.com/pkoukk/tiktoken-go-loader"
+	"github.com/awee-ai/go-tokenizer"
 )
 
 // Model represents a model with its cost
@@ -41,13 +39,6 @@ var _ Accountant = (*Counter)(nil)
 
 // NewAccountant returns a new pricing
 func NewAccountant(models []Model, converter Converter, bpe bool) *Counter {
-	if bpe {
-		loader := tiktokenloader.NewOfflineLoader()
-		tiktoken.SetBpeLoader(loader)
-	} else {
-		tiktoken.SetBpeLoader(nil)
-	}
-
 	return &Counter{
 		models:    models,
 		converter: converter,
@@ -67,7 +58,7 @@ func (p *Counter) Models(models []Model) []Model {
 
 // TokenCount returns the token count for a message
 func (p *Counter) TokenCount(provider, model string, content string) (int64, error) {
-	tkm, err := tiktoken.EncodingForModel(model)
+	tkm, err := tokenizer.ForModel(tokenizer.Model(model))
 	if err != nil {
 		// no encoding for model
 		if strings.Contains(err.Error(), "no encoding for model") {
@@ -76,7 +67,10 @@ func (p *Counter) TokenCount(provider, model string, content string) (int64, err
 
 		return 0, fmt.Errorf("failed to get encoding for model %s: %w", model, err)
 	}
-	tokens := len(tkm.Encode(content, nil, nil))
+	tokens, err := tkm.Count(content)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count tokens for model %s: %w", model, err)
+	}
 	return int64(tokens), nil
 }
 
