@@ -1,11 +1,14 @@
 package aicost
 
 import (
+	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/awee-ai/go-tokenizer"
 )
+
+var ErrPricingModelNotFound = fmt.Errorf("model not supported")
+var ErrTokenizerNotFound = fmt.Errorf("tokenizer not found")
 
 // Model represents a model with its cost
 type Model struct {
@@ -25,9 +28,6 @@ type Accountant interface {
 	CostForModelOutput(provider, model string, userCurrency string, tokens int64) (*Money, *Money, error)
 	Models(models []Model) []Model
 }
-
-var ErrPricingModelNotFound = fmt.Errorf("model not supported")
-var ErrTokenizerNotFound = fmt.Errorf("tokenizer not found")
 
 // Counter is a pricing calculator
 type Counter struct {
@@ -60,8 +60,7 @@ func (p *Counter) Models(models []Model) []Model {
 func (p *Counter) TokenCount(provider, model string, content string) (int64, error) {
 	tkm, err := tokenizer.ForModel(tokenizer.Model(model))
 	if err != nil {
-		// no encoding for model
-		if strings.Contains(err.Error(), "no encoding for model") {
+		if errors.Is(err, tokenizer.ErrModelNotSupported) || errors.Is(err, tokenizer.ErrEncodingNotSupported) {
 			return 0, fmt.Errorf("%w: %w", err, ErrTokenizerNotFound)
 		}
 
