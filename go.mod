@@ -5,7 +5,7 @@ go 1.23.0
 toolchain go1.24.0
 
 require (
-	github.com/awee-ai/go-tokenizer v0.0.0-20250711173923-214cf54cfd52
+	github.com/awee-ai/go-tokenizer v0.0.0-20250713120856-f9fed5a1f267
 	github.com/stretchr/testify v1.10.0
 )
 
