@@ -1,5 +1,3 @@
-github.com/awee-ai/go-tokenizer v0.0.0-20250713120856-f9fed5a1f267 h1:lmiXsrfd4W+iXFHe4XcYy8bsU8X62+uH5VR+wgEiq8M=
-github.com/awee-ai/go-tokenizer v0.0.0-20250713120856-f9fed5a1f267/go.mod h1:3wQNz7W/NW2yCJzl4fdqG+/lDjKT2nKcTtkKnTM9Bks=
 github.com/awee-ai/go-tokenizer v0.0.0-20250713234627-e13d63d7f310 h1:QLCFArMIDuVq7HXfYnWrTzGWjvfaGkQKfNMaBLYBj98=
 github.com/awee-ai/go-tokenizer v0.0.0-20250713234627-e13d63d7f310/go.mod h1:YkR6zw7PkpmNOViNq7ktZ8KV/6iETMygJeFpQS9SDgg=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
